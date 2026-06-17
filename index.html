@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proteins — The Machines of Life</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --white:   #F5F3EE;
+            --muted:   rgba(245,243,238,.55);
+            --accent:  #C8A96E;      /* warm gold */
+            --overlay: rgba(0,0,0,.45);
+        }
+
+        html { scroll-behavior: auto; }
+
+        body {
+            background: #000;
+            color: var(--white);
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ── FULL-SCREEN CANVAS BACKGROUND ── */
+        #bg-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            display: none; /* shown once frames are ready */
+        }
+
+        /* Dim overlay so text stays readable */
+        #bg-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--overlay);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Loading screen */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.25rem;
+            transition: opacity .6s ease;
+        }
+        #loading-screen.fade-out { opacity: 0; pointer-events: none; }
+        .loader-bar-track {
+            width: 180px; height: 1px;
+            background: rgba(255,255,255,.12);
+        }
+        .loader-bar-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width .15s linear;
+        }
+        #load-label {
+            font-size: .75rem;
+            letter-spacing: .15em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        /* Error state */
+        #error-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: #000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: .75rem;
+            text-align: center;
+            padding: 2rem;
+            color: var(--muted);
+            font-size: .85rem;
+        }
+        #error-screen strong { color: #e07070; display: block; margin-bottom: .5rem; font-size: 1rem; }
+
+        /* ── NAV ── */
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1.75rem 3rem;
+        }
+        .nav-logo {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.2rem;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: var(--white);
+            text-decoration: none;
+        }
+        .nav-links { display: flex; gap: 2.5rem; }
+        .nav-links a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: .75rem;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            font-weight: 400;
+            transition: color .2s;
+        }
+        .nav-links a:hover { color: var(--white); }
+
+        /* ── ALL CONTENT ABOVE Z-INDEX 2 ── */
+        .page-content { position: relative; z-index: 2; }
+
+        /* ── HERO ── */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-end;
+            padding: 0 3rem 5rem;
+        }
+        .hero-eyebrow {
+            font-size: .72rem;
+            letter-spacing: .22em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 1.25rem;
+            font-weight: 400;
+        }
+        .hero-title {
+            font-family: 'EB Garamond', serif;
+            font-size: clamp(3.5rem, 7vw, 6.5rem);
+            font-weight: 400;
+            line-height: 1.05;
+            letter-spacing: -.01em;
+            color: var(--white);
+            margin-bottom: 1.5rem;
+        }
+        .hero-title em {
+            font-style: italic;
+            color: var(--accent);
+        }
+        .hero-sub {
+            font-size: .95rem;
+            color: var(--muted);
+            max-width: 420px;
+            line-height: 1.75;
+            margin-bottom: 3rem;
+            font-weight: 300;
+        }
+        .hero-scroll-hint {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            color: var(--muted);
+            font-size: .72rem;
+            letter-spacing: .15em;
+            text-transform: uppercase;
+            animation: nudge 2.5s ease-in-out infinite;
+        }
+        .hero-scroll-hint::before {
+            content: '';
+            display: block;
+            width: 1px;
+            height: 40px;
+            background: linear-gradient(to bottom, transparent, var(--accent));
+        }
+        @keyframes nudge {
+            0%, 100% { transform: translateY(0); }
+            50%       { transform: translateY(5px); }
+        }
+
+        /* ── SCROLL SECTION ── */
+        #scroll-section { position: relative; }
+        .scroll-track {
+            height: 380vh;
+            position: relative;
+        }
+        .sticky-stage {
+            position: sticky;
+            top: 0; left: 0; right: 0;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* ── ANNOTATIONS ── */
+        .annotation {
+            position: absolute;
+            width: 300px;
+            padding: 1.1rem 1.25rem;
+            border-left: 1px solid rgba(200,169,110,.35);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .5s ease, transform .5s ease;
+        }
+        .annotation.left  {
+            left: 3rem;
+            top: 50%; transform: translateY(-50%) translateX(-10px);
+        }
+        .annotation.right {
+            right: 3rem;
+            top: 50%; transform: translateY(-50%) translateX(10px);
+            border-left: none;
+            border-right: 1px solid rgba(200,169,110,.35);
+            text-align: right;
+        }
+        .annotation.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .annotation.left.active  { transform: translateY(-50%) translateX(0); }
+        .annotation.right.active { transform: translateY(-50%) translateX(0); }
+
+        .ann-label {
+            font-size: .92rem;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: .5rem;
+        }
+        .ann-title {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.55rem;
+            font-weight: 500;
+            color: var(--white);
+            margin-bottom: .5rem;
+            line-height: 1.25;
+        }
+        .ann-body {
+            font-size: 1.1rem;
+            color: var(--muted);
+            line-height: 1.65;
+            font-weight: 300;
+        }
+        .ann-img-wrap {
+            margin-top: .85rem;
+            width: calc(100% + 2.5rem);
+            margin-left: -1.25rem;
+            margin-right: -1.25rem;
+        }
+        .ann-img-wrap img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border: 1px solid rgba(200,169,110,.2);
+        }
+
+        /* ── PROGRESS BAR ── */
+        .progress-bar {
+            position: absolute;
+            right: 2.5rem; top: 50%;
+            transform: translateY(-50%);
+            display: flex; flex-direction: column;
+            align-items: center; gap: .5rem;
+            z-index: 20;
+        }
+        .progress-track {
+            width: 1px; height: 140px;
+            background: rgba(255,255,255,.12);
+            position: relative;
+        }
+        .progress-fill {
+            position: absolute; top: 0; left: 0; width: 100%;
+            background: var(--accent);
+            height: 0%;
+            transition: height .1s linear;
+        }
+        .progress-label {
+            font-size: .65rem;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: var(--muted);
+            writing-mode: vertical-rl;
+            margin-top: .5rem;
+        }
+
+        /* ── CHAPTER LABEL ── */
+        .chapter-label {
+            position: absolute;
+            bottom: 2.5rem; left: 50%;
+            transform: translateX(-50%);
+            font-size: .7rem;
+            letter-spacing: .2em;
+            text-transform: uppercase;
+            color: var(--accent);
+            z-index: 20;
+            opacity: 0;
+            transition: opacity .4s;
+        }
+        .chapter-label.visible { opacity: 1; }
+
+        /* ── BELOW FOLD ── */
+        .below-fold {
+            padding: 10rem 3rem 8rem;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .section-eyebrow {
+            font-size: .7rem;
+            letter-spacing: .2em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 1.25rem;
+        }
+        .section-title {
+            font-family: 'EB Garamond', serif;
+            font-size: clamp(2rem, 4vw, 3.2rem);
+            font-weight: 400;
+            line-height: 1.2;
+            letter-spacing: -.01em;
+            margin-bottom: 1.5rem;
+            color: var(--white);
+        }
+        .section-body {
+            color: var(--muted);
+            max-width: 580px;
+            line-height: 1.8;
+            font-size: .95rem;
+            font-weight: 300;
+        }
+
+        /* ── CARDS ── */
+        .three-col {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1px;
+            margin-top: 4rem;
+            border: 1px solid rgba(255,255,255,.08);
+        }
+        .card {
+            padding: 2.25rem 2rem;
+            background: rgba(0,0,0,.6);
+            border: none;
+            backdrop-filter: blur(10px);
+        }
+        .card-number {
+            font-family: 'EB Garamond', serif;
+            font-size: 2rem;
+            font-weight: 400;
+            color: var(--accent);
+            opacity: .5;
+            margin-bottom: .75rem;
+            line-height: 1;
+        }
+        .card h3 {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.15rem;
+            font-weight: 500;
+            margin-bottom: .6rem;
+            color: var(--white);
+        }
+        .card p {
+            font-size: .82rem;
+            color: var(--muted);
+            line-height: 1.7;
+            font-weight: 300;
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            border-top: 1px solid rgba(255,255,255,.08);
+            padding: 2.5rem 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: var(--muted);
+            font-size: .75rem;
+            letter-spacing: .05em;
+            position: relative;
+            z-index: 2;
+        }
+
+        @media (max-width: 768px) {
+            nav { padding: 1.25rem 1.5rem; }
+            .nav-links { display: none; }
+            .hero { padding: 0 1.5rem 4rem; }
+            .annotation { display: none; }
+            .progress-bar { right: 1rem; }
+            .below-fold { padding: 7rem 1.5rem 5rem; }
+            footer { flex-direction: column; gap: 1rem; text-align: center; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .hero-scroll-hint { animation: none; }
+            .annotation { transition: opacity .2s; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Full-screen canvas (video frames drawn here) -->
+<canvas id="bg-canvas"></canvas>
+<div id="bg-overlay"></div>
+
+<!-- Loading screen -->
+<div id="loading-screen">
+    <div id="load-label">Loading…</div>
+    <div class="loader-bar-track">
+        <div class="loader-bar-fill" id="loader-bar-fill"></div>
+    </div>
+</div>
+
+<!-- Error screen -->
+<div id="error-screen">
+    <strong>Video not found</strong>
+    Place your video file named <code style="color:var(--accent)">protein.webm</code> in the same folder as this HTML file.
+</div>
+
+<!-- Hidden video element used for frame decoding only -->
+<video id="protein-video" src="protein.webm" preload="auto" muted playsinline crossorigin="anonymous" style="display:none;"></video>
+
+<div class="page-content">
+
+    <!-- NAV -->
+    <nav>
+        <a class="nav-logo" href="#" id="nav-logo-text">Protein</a>
+        <div class="nav-links">
+            <a href="#scroll-section" id="nav-link-1">Explore</a>
+            <a href="#about"          id="nav-link-2">Structure</a>
+            <a href="#function"       id="nav-link-3">Function</a>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <p class="hero-eyebrow" id="hero-eyebrow">Molecular Biology</p>
+        <h1 class="hero-title" id="hero-title">The Machines<br>of <em>Life</em></h1>
+        <p class="hero-sub" id="hero-sub">
+            Every movement, reaction, and signal inside a living cell is
+            orchestrated by proteins — intricate molecular machines folded
+            into precise three-dimensional shapes.
+        </p>
+        <div class="hero-scroll-hint" id="hero-scroll-hint">Scroll to explore</div>
+    </section>
+
+    <!-- SCROLL SECTION -->
+    <section id="scroll-section">
+        <div class="scroll-track" id="scroll-track">
+            <div class="sticky-stage" id="sticky-stage">
+
+                <!-- Annotations (left side) -->
+                <div class="annotation left" id="ann-0">
+                    <div class="ann-label">01 — Backbone</div>
+                    <div class="ann-title">Polypeptide Backbone</div>
+                    <div class="ann-body">The backbone is a repeating sequence of nitrogen, alpha-carbon, and carbonyl carbon atoms — the structural spine from which side chains extend.</div>
+                    <div class="ann-img-wrap"><img src="images/ann-0.jpg" alt="" onerror="this.parentElement.style.display='none'" /></div>
+                </div>
+                <div class="annotation left" id="ann-2">
+                    <div class="ann-label">03 — Alpha Helix</div>
+                    <div class="ann-title">Alpha-Helical Regions</div>
+                    <div class="ann-body">Hydrogen bonds between backbone atoms wind the chain into a right-handed helix — one of the most common secondary structure motifs.</div>
+                    <div class="ann-img-wrap"><img src="images/ann-2.jpg" alt="" onerror="this.parentElement.style.display='none'" /></div>
+                </div>
+                <!-- Annotations (right side) -->
+                <div class="annotation right" id="ann-1">
+                    <div class="ann-label">02 — Side Chains</div>
+                    <div class="ann-title">Amino Acid Side Chains</div>
+                    <div class="ann-body">Each of the 20 amino acids carries a unique R-group that determines charge, polarity, and size — driving how the chain folds into its final shape.</div>
+                    <div class="ann-img-wrap"><img src="images/ann-1.jpg" alt="" onerror="this.parentElement.style.display='none'" /></div>
+                </div>
+                <div class="annotation right" id="ann-3">
+                    <div class="ann-label">04 — Beta Sheet</div>
+                    <div class="ann-title">Beta-Sheet Network</div>
+                    <div class="ann-body">Extended strands aligned side-by-side and linked by hydrogen bonds form flat, rigid sheets that often compose the core of globular proteins.</div>
+                    <div class="ann-img-wrap"><img src="images/ann-3.jpg" alt="" onerror="this.parentElement.style.display='none'" /></div>
+                </div>
+
+                <!-- Progress indicator -->
+                <div class="progress-bar">
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <span class="progress-label">Explore</span>
+                </div>
+
+                <!-- Chapter label -->
+                <div class="chapter-label" id="chapter-label"></div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- BELOW FOLD -->
+    <section class="below-fold" id="about">
+        <p class="section-eyebrow" id="section-eyebrow">Structural Biology</p>
+        <h2 class="section-title" id="section-title">From sequence<br>to function</h2>
+        <p class="section-body" id="section-body">
+            A protein's one-dimensional amino acid sequence encodes every level of its
+            architecture — from local secondary motifs all the way to multi-subunit
+            quaternary assemblies. Understanding that hierarchy is the key to rational
+            drug design, synthetic biology, and disease research.
+        </p>
+
+        <div class="three-col" id="function">
+            <div class="card">
+                <div class="card-number">I</div>
+                <h3 id="card1-title">Primary Structure</h3>
+                <p  id="card1-body">The linear sequence of amino acids encoded by the gene — the blueprint from which all higher-order structure emerges.</p>
+            </div>
+            <div class="card">
+                <div class="card-number">II</div>
+                <h3 id="card2-title">Secondary Structure</h3>
+                <p  id="card2-body">Local hydrogen-bonding patterns fold segments into alpha helices, beta sheets, and turns — the recurring vocabulary of protein architecture.</p>
+            </div>
+            <div class="card">
+                <div class="card-number">III</div>
+                <h3 id="card3-title">Tertiary Structure</h3>
+                <p  id="card3-body">The complete three-dimensional fold — the unique, functional shape that evolution has refined over billions of years of selection.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <span id="footer-left">© 2026 Protein — The Machines of Life</span>
+        <span id="footer-right">Built with structural biology in mind</span>
+    </footer>
+
+</div><!-- /page-content -->
+
+<script>
+    /* ════════════════════════════════════════════════════════════════════
+       ✏️  TEXT CONFIG — Edit all your copy here
+       ════════════════════════════════════════════════════════════════════ */
+    const TEXT = {
+        /* Navigation */
+        navLogo:   "Protein",
+        navLink1:  "Explore",
+        navLink2:  "Struktur",
+        navLink3:  "Zusammenfassung",
+
+        /* Hero section */
+        heroEyebrow: "Chemie 11c",
+        heroTitle:   "PROTEINE?<br>untertitel ",     //<em>Life</em>   // HTML ok
+        heroSub:     "text?",
+        heroScroll:  "Scroll down",
+
+        /* Scroll annotations
+           start / end are scroll positions (0 = top, 1 = bottom of scroll track) */
+        annotations: [
+            { id: "ann-0", side: "left",  start: 0.04, end: 0.30,
+                label: "01 — Grundlegendes",   title: "Aminosäuren",
+                body:  "Aminosäuren aufbau / Struktur", },
+
+            { id: "ann-1", side: "right", start: 0.15, end: 0.44,
+                label: "02 — Bildung Protein", title: "Peptid Bindungen",
+                body:  "O-H verbindet sich mit N, H2O als nebenpropdukt -> Proteine bestehen aus ketten von Aminosäuren" },
+
+            { id: "ann-2", side: "left",  start: 0.42, end: 0.68,
+                label: "03 — idk", title: "irgendwas",
+                body:  "text?" },
+
+            { id: "ann-3", side: "right", start: 0.58, end: 0.88,
+                label: "04 — Beispiel",  title: "welches molekül?",
+                body:  "text?" },
+        ],
+
+        /* Chapter labels (shown at the bottom of the screen while scrolling) */
+        chapters: [
+            { at: 0.00, label: "Aminosäuren" },
+            { at: 0.15, label: "Aufbau" },
+            { at: 0.42, label: "Verkettung der Aminosäuren" },
+            { at: 0.68, label: "Primäre Sekundäre Tertiäre Struktur" },
+            { at: 0.90, label: "Tertiary Conformation" },
+        ],
+
+        /* Below-fold section */
+        sectionEyebrow: "Structural Biology",
+        sectionTitle:   "From sequence<br>to function",     // HTML ok
+        sectionBody:    "A protein's one-dimensional amino acid sequence encodes every level of its architecture — from local secondary motifs all the way to multi-subunit quaternary assemblies. Understanding that hierarchy is the key to rational drug design, synthetic biology, and disease research.",
+
+        /* Cards */
+        card1Title: "Primär Struktur",
+        card1Body:  "text",
+        card2Title: "Sekundär Struktur",
+        card2Body:  "text",
+        card3Title: "Tertiär Struktur",
+        card3Body:  "text",
+
+        /* Footer */
+        footerLeft:  "© 2026 Protein — The Machines of Life",
+        footerRight: "Built with structural biology in mind",
+    };
+    /* ════════════════════════════════════════════════════════════════════
+       End of TEXT CONFIG
+       ════════════════════════════════════════════════════════════════════ */
+
+
+    /* ── Apply text config to DOM ──────────────────────────────────────── */
+    function applyText() {
+        document.getElementById('nav-logo-text').textContent = TEXT.navLogo;
+        document.getElementById('nav-link-1').textContent    = TEXT.navLink1;
+        document.getElementById('nav-link-2').textContent    = TEXT.navLink2;
+        document.getElementById('nav-link-3').textContent    = TEXT.navLink3;
+        document.getElementById('hero-eyebrow').textContent  = TEXT.heroEyebrow;
+        document.getElementById('hero-title').innerHTML      = TEXT.heroTitle;
+        document.getElementById('hero-sub').textContent      = TEXT.heroSub;
+        document.getElementById('hero-scroll-hint').textContent = TEXT.heroScroll;
+        document.getElementById('section-eyebrow').textContent = TEXT.sectionEyebrow;
+        document.getElementById('section-title').innerHTML   = TEXT.sectionTitle;
+        document.getElementById('section-body').textContent  = TEXT.sectionBody;
+        document.getElementById('card1-title').textContent   = TEXT.card1Title;
+        document.getElementById('card1-body').textContent    = TEXT.card1Body;
+        document.getElementById('card2-title').textContent   = TEXT.card2Title;
+        document.getElementById('card2-body').textContent    = TEXT.card2Body;
+        document.getElementById('card3-title').textContent   = TEXT.card3Title;
+        document.getElementById('card3-body').textContent    = TEXT.card3Body;
+        document.getElementById('footer-left').textContent   = TEXT.footerLeft;
+        document.getElementById('footer-right').textContent  = TEXT.footerRight;
+
+        TEXT.annotations.forEach(a => {
+            const el = document.getElementById(a.id);
+            if (!el) return;
+            el.querySelector('.ann-label').textContent = a.label;
+            el.querySelector('.ann-title').textContent = a.title;
+            el.querySelector('.ann-body').textContent  = a.body;
+        });
+    }
+    applyText();
+
+
+    /* ── Video / canvas setup ──────────────────────────────────────────── */
+    const video        = document.getElementById('protein-video');
+    const canvas       = document.getElementById('bg-canvas');
+    const ctx          = canvas.getContext('2d');
+    const loadingEl    = document.getElementById('loading-screen');
+    const loadLabel    = document.getElementById('load-label');
+    const loaderBar    = document.getElementById('loader-bar-fill');
+    const errorEl      = document.getElementById('error-screen');
+    const track        = document.getElementById('scroll-track');
+    const progressFill = document.getElementById('progress-fill');
+    const chapterEl    = document.getElementById('chapter-label');
+
+    let frames      = [];
+    let framesReady = false;
+    let lastChapter = '';
+    let lastFrameIdx = -1;
+
+    const TARGET_FPS = 30;
+
+    /* Resize canvas to fill viewport */
+    function resizeCanvas() {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+        if (framesReady && frames.length > 0 && lastFrameIdx >= 0) {
+            drawFrame(lastFrameIdx);
+        }
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function drawFrame(idx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        /* Cover-fit: scale to fill canvas while maintaining aspect ratio */
+        const bmp = frames[idx];
+        const scale = Math.max(canvas.width / bmp.width, canvas.height / bmp.height);
+        const w = bmp.width  * scale;
+        const h = bmp.height * scale;
+        const x = (canvas.width  - w) / 2;
+        const y = (canvas.height - h) / 2;
+        ctx.drawImage(bmp, x, y, w, h);
+        lastFrameIdx = idx;
+    }
+
+    /* ── Frame extraction (done once on page load) ─────────────────────
+     * We seek the hidden <video> through every frame at TARGET_FPS,
+     * capture each as an ImageBitmap, and store all in memory.
+     * After that, scrolling = just picking the right bitmap — zero decode lag.
+     * ──────────────────────────────────────────────────────────────────── */
+    async function extractFrames() {
+        return new Promise((resolve, reject) => {
+            video.addEventListener('error', () => reject(new Error('video_error')), { once: true });
+
+            video.addEventListener('loadedmetadata', async () => {
+                const duration    = video.duration;
+                const totalFrames = Math.ceil(duration * TARGET_FPS);
+
+                const offscreen   = document.createElement('canvas');
+                offscreen.width   = video.videoWidth  || 1920;
+                offscreen.height  = video.videoHeight || 1080;
+                const offCtx      = offscreen.getContext('2d');
+
+                let captured = 0;
+
+                function seekNext() {
+                    if (captured >= totalFrames) { resolve(); return; }
+                    video.currentTime = (captured / totalFrames) * duration;
+                }
+
+                video.addEventListener('seeked', async function onSeeked() {
+                    offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
+                    offCtx.drawImage(video, 0, 0);
+                    const bmp = await createImageBitmap(offscreen);
+                    frames.push(bmp);
+                    captured++;
+
+                    const pct = Math.round((captured / totalFrames) * 100);
+                    loadLabel.textContent       = `Decoding frames… ${pct}%`;
+                    loaderBar.style.width       = pct + '%';
+
+                    if (captured >= totalFrames) {
+                        video.removeEventListener('seeked', onSeeked);
+                        resolve();
+                    } else {
+                        seekNext();
+                    }
+                });
+
+                seekNext();
+            }, { once: true });
+
+            video.load();
+        });
+    }
+
+    async function init() {
+        try {
+            await extractFrames();
+            framesReady = true;
+            loadingEl.classList.add('fade-out');
+            setTimeout(() => { loadingEl.style.display = 'none'; }, 600);
+            canvas.style.display = 'block';
+            scrub();
+        } catch (e) {
+            loadingEl.style.display  = 'none';
+            errorEl.style.display    = 'flex';
+        }
+    }
+
+    video.addEventListener('error', () => {
+        loadingEl.style.display = 'none';
+        errorEl.style.display   = 'flex';
+    });
+
+    /* ── Scroll scrub ───────────────────────────────────────────────────── */
+    function scrub() {
+        const rect   = track.getBoundingClientRect();
+        const trackH = track.offsetHeight - window.innerHeight;
+        const t      = Math.max(0, Math.min(1, -rect.top / trackH));
+
+        /* Draw frame */
+        if (framesReady && frames.length > 0) {
+            const idx = Math.min(frames.length - 1, Math.floor(t * frames.length));
+            if (idx !== lastFrameIdx) drawFrame(idx);
+        }
+
+        /* Progress bar */
+        progressFill.style.height = (t * 100) + '%';
+
+        /* Chapter label */
+        let label = '';
+        for (const c of TEXT.chapters) { if (t >= c.at) label = c.label; }
+        if (label !== lastChapter) {
+            chapterEl.classList.remove('visible');
+            setTimeout(() => { chapterEl.textContent = label; chapterEl.classList.add('visible'); }, 200);
+            lastChapter = label;
+        }
+
+        /* Annotations */
+        TEXT.annotations.forEach(a => {
+            const el = document.getElementById(a.id);
+            if (!el) return;
+            el.classList.toggle('active', t >= a.start && t <= a.end);
+        });
+    }
+
+    window.addEventListener('scroll', scrub, { passive: true });
+    init();
+</script>
+</body>
+</html>
