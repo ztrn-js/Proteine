@@ -370,6 +370,21 @@
             line-height: 1.7;
             font-weight: 300;
         }
+        .card-img-wrap {
+            margin-top: 1.25rem;
+            margin-left: -2rem;
+            margin-right: -2rem;
+            margin-bottom: -2.25rem;
+            overflow: hidden;
+            border-top: 1px solid rgba(200,169,110,.2);
+        }
+        .card-img-wrap img {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+            display: block;
+            opacity: .85;
+        }
 
 
         footer {
@@ -456,9 +471,9 @@
                     <div class="ann-img-wrap"><img src="images/ann-0.jpg" alt="" onerror="this.parentElement.style.display='none'" /></div>
                 </div>
                 <div class="annotation left" id="ann-2">
-                    <div class="ann-label">03 — idk</div>
+                    <div class="ann-label">03 — Protein Vorkommen/auswirkungen</div>
                     <div class="ann-title">irgendwas</div>
-                    <div class="ann-body">text?</div>
+                    <div class="ann-body">Proteine sind essenziell für den Menschlichen Körper. Sie werden für Muskelaufbau usw. gebraucht. Der Mensch erhält Proteine durch Nahrungsaufnahme.</div>
                     <div class="ann-img-wrap"><img src="images/ann-2.jpg" alt="" onerror="this.parentElement.style.display='none'" /></div>
                 </div>
                 <div class="annotation right" id="ann-1">
@@ -501,17 +516,20 @@
             <div class="card">
                 <div class="card-number">I</div>
                 <h3>Primäre Struktur</h3>
-                <p>text</p>
+                <p>Aminosäuren</p>
+                <div class="card-img-wrap"><img src="images/struktur-1.jpg" alt="Primäre Struktur" onerror="this.parentElement.style.display='none'" /></div>
             </div>
             <div class="card">
                 <div class="card-number">II</div>
                 <h3>Sekundäre Struktur</h3>
-                <p>text</p>
+                <p>bsp. Helix form</p>
+                <div class="card-img-wrap"><img src="images/struktur-2.jpg" alt="Sekundäre Struktur" onerror="this.parentElement.style.display='none'" /></div>
             </div>
             <div class="card">
                 <div class="card-number">III</div>
                 <h3>Tertiäre Struktur</h3>
-                <p>text</p>
+                <p>Polypeptidketten</p>
+                <div class="card-img-wrap"><img src="images/struktur-3.jpg" alt="Tertiäre Struktur" onerror="this.parentElement.style.display='none'" /></div>
             </div>
         </div>
     </section>
@@ -535,7 +553,7 @@
     const CHAPTERS = [
         { at: 0.00, label: "Aminosäuren" },
         { at: 0.15, label: "Verkettung der Aminosäuren" },
-        { at: 0.42, label: "" },
+        { at: 0.42, label: "Proteine" },
         { at: 0.68, label: "" },
         { at: 0.90, label: "Struktur Ebenen" },
     ];
