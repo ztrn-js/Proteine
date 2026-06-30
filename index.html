@@ -248,14 +248,27 @@
             line-height: 1.65;
             font-weight: 300;
 
-            
+
         }
+
         .ann-img-wrap {
             margin-top: .85rem;
-            width: calc(100% + 5rem);
-            margin-left: -2.5rem;
-            margin-right: -2.5rem;
+            width: calc(100% + 10rem);
         }
+
+        /*  LEFT text box */
+        .annotation.left .ann-img-wrap {
+            margin-left: -0.5rem;
+            margin-right: 0rem;
+        }
+
+        /*  RIGHT text box */
+        .annotation.right .ann-img-wrap {
+            margin-left: -9.5rem;
+            margin-right: 0;
+        }
+
+
 
         .ann-img-wrap img {
             width: 100%;
